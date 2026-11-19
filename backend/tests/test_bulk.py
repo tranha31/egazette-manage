@@ -15,7 +15,7 @@ from app.web import create_app
 from conftest import needs_pdf
 
 H = {"X-Requested-With": "XMLHttpRequest"}
-TAX = "0101243150"
+TAX = "0999999991"
 HEAD = ["Mã số thuế", "Loại công bố", "Từ ngày", "Đến ngày", "Crawl lại"]
 
 
@@ -56,13 +56,13 @@ def test_template_is_readable_by_the_parser_and_documented():
 # ------------------------------------------------------------------ đọc từng dòng
 def test_row_variants_are_normalised():
     rows = parse([
-        [101243150, "amend", datetime(2024, 1, 5), "2024-12-31", "Có"],      # MST dạng số mất số 0, ngày dạng Excel và ISO
+        [999999991, "amend", datetime(2024, 1, 5), "2024-12-31", "Có"],      # MST dạng số mất số 0, ngày dạng Excel và ISO
         ["0100109106-001", "Đăng ký mới", "5/1/2024", "31.12.2024", "x"],  # MST 13 số, tên loại, ngày d/m/yyyy
-        ["0101243150", "AMEND, NEW; amend", None, None, ""],               # nhiều loại, trùng được gộp
-        ["0101243150", "Tất cả", None, None, "Không"],
+        ["0999999991", "AMEND, NEW; amend", None, None, ""],               # nhiều loại, trùng được gộp
+        ["0999999991", "Tất cả", None, None, "Không"],
     ])
     assert all(r.ok for r in rows), [r.errors for r in rows]
-    assert rows[0].tax_code == "0101243150" and rows[0].types == ["AMEND"] and rows[0].force is True
+    assert rows[0].tax_code == "0999999991" and rows[0].types == ["AMEND"] and rows[0].force is True
     assert (rows[0].date_from, rows[0].date_to) == (date(2024, 1, 5), date(2024, 12, 31))
     assert rows[1].tax_code == "0100109106-001" and rows[1].types == ["NEW"]
     assert (rows[1].date_from, rows[1].date_to) == (date(2024, 1, 5), date(2024, 12, 31)) and rows[1].force
@@ -74,15 +74,15 @@ def test_row_variants_are_normalised():
     (["abc", "AMEND", None, None, None], "không hợp lệ"),
     (["12345", "AMEND", None, None, None], "không hợp lệ"),
     ([None, "AMEND", None, None, None], "Thiếu mã số thuế"),
-    (["0101243150 0100109106", "AMEND", None, None, None], "một mã số thuế"),
-    (["0101243150", None, None, None, None], "Thiếu loại"),
-    (["0101243150", "XYZ", None, None, None], "Loại công bố không hợp lệ: 'XYZ'"),
-    (["0101243150", "AMEND, XYZ", None, None, None], "'XYZ'"),
-    (["0101243150", "AMEND", "31/02/2024", None, None], "Từ ngày phải có dạng"),
-    (["0101243150", "AMEND", "hôm qua", None, None], "Từ ngày phải có dạng"),
-    (["0101243150", "AMEND", None, "13/13/2024", None], "Đến ngày phải có dạng"),
-    (["0101243150", "AMEND", "01/02/2025", "01/01/2025", None], "nhỏ hơn hoặc bằng"),
-    (["0101243150", "AMEND", None, None, "có thể"], "Crawl lại chỉ nhận"),
+    (["0999999991 0100109106", "AMEND", None, None, None], "một mã số thuế"),
+    (["0999999991", None, None, None, None], "Thiếu loại"),
+    (["0999999991", "XYZ", None, None, None], "Loại công bố không hợp lệ: 'XYZ'"),
+    (["0999999991", "AMEND, XYZ", None, None, None], "'XYZ'"),
+    (["0999999991", "AMEND", "31/02/2024", None, None], "Từ ngày phải có dạng"),
+    (["0999999991", "AMEND", "hôm qua", None, None], "Từ ngày phải có dạng"),
+    (["0999999991", "AMEND", None, "13/13/2024", None], "Đến ngày phải có dạng"),
+    (["0999999991", "AMEND", "01/02/2025", "01/01/2025", None], "nhỏ hơn hoặc bằng"),
+    (["0999999991", "AMEND", None, None, "có thể"], "Crawl lại chỉ nhận"),
 ])
 def test_invalid_rows_report_a_clear_error(cells, fragment):
     (r,) = parse([cells])

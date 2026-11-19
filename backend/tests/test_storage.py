@@ -14,7 +14,7 @@ from app.storage import MemoryStore, MinioStore, StoreError
 
 from conftest import needs_pdf
 
-TAX = ["0101243150"]
+TAX = ["0999999991"]
 D = date
 
 
@@ -159,10 +159,10 @@ def make_legacy(tmp_path, n=3):
     rows = []
     with Session() as s:
         for i in range(n):
-            key = f"pdf/0101243150/AMEND/f{i}.pdf"
+            key = f"pdf/0999999991/AMEND/f{i}.pdf"
             (src / key).parent.mkdir(parents=True, exist_ok=True)
             (src / key).write_bytes(b"%PDF-" + bytes([65 + i]) * (100 + i))
-            a = Announcement(tax_code="0101243150", ann_type="AMEND", posted_at=now().replace(second=i), posted_date=now().date(),
+            a = Announcement(tax_code="0999999991", ann_type="AMEND", posted_at=now().replace(second=i), posted_date=now().date(),
                              created_at=now(), updated_at=now(), pdf_status="ok", pdf_path=key)
             s.add(a)
             rows.append(key)
@@ -233,7 +233,7 @@ def test_migrate_adds_missing_columns_to_an_old_database(tmp_path):
     old = create_engine(url)
     with old.begin() as c:
         c.execute(text("CREATE TABLE announcements (id INTEGER PRIMARY KEY, tax_code VARCHAR(20), pdf_path VARCHAR(500))"))
-        c.execute(text("INSERT INTO announcements (tax_code, pdf_path) VALUES ('0101243150', 'pdf/a.pdf')"))
+        c.execute(text("INSERT INTO announcements (tax_code, pdf_path) VALUES ('0999999991', 'pdf/a.pdf')"))
     old.dispose()
     db.init_engine(url)
     try:
@@ -280,7 +280,7 @@ def test_real_minio_roundtrip(real_store, tmp_path):
     st.ensure_bucket()                                                  # idempotent
     f = tmp_path / "a.pdf"
     f.write_bytes(b"%PDF-1.4\n" + os.urandom(200_000))
-    key = "pdf/0101243150/AMEND/test.pdf"
+    key = "pdf/0999999991/AMEND/test.pdf"
     assert st.stat(key) is None and not st.exists(key)
     assert st.put_file(key, f) == f.stat().st_size and st.stat(key) == f.stat().st_size
     size, chunks = st.open(key)

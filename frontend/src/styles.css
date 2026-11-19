@@ -113,12 +113,12 @@ footer { text-align: center; color: var(--faint); font-size: 12px; padding: 22px
 .table-card { overflow: hidden; }
 .table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; }
-thead th { position: sticky; top: 0; background: var(--surface-2); color: var(--muted); font-size: 12px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; text-align: left; padding: 11px 16px; white-space: nowrap; border-bottom: 1px solid var(--border); }
-tbody td, tbody th { padding: 12px 16px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border); }
+thead th { position: sticky; top: 0; background: var(--surface-2); color: var(--muted); font-size: 12px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; text-align: left; padding: 11px 12px; white-space: nowrap; border-bottom: 1px solid var(--border); }
+tbody td, tbody th { padding: 12px 12px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border); }
 tbody tr:last-child td, tbody tr:last-child th { border-bottom: 0; }
 tbody tr:hover { background: var(--surface-2); }
-td.wrap { word-break: break-word; max-width: 360px; min-width: 140px; }
-.cell-company { display: flex; align-items: center; gap: 11px; min-width: 230px; } .sub { color: var(--muted); font-size: 12.5px; }
+td.wrap { word-break: break-word; max-width: 360px; min-width: 120px; }
+.cell-company { display: flex; align-items: center; gap: 11px; min-width: 200px; } .sub { color: var(--muted); font-size: 12.5px; }
 table.kv th { width: 280px; font-weight: 550; color: var(--muted); background: var(--surface-2); font-size: 13.5px; text-transform: none; letter-spacing: 0; }
 .table-card > .pager { border-top: 1px solid var(--border); }
 
@@ -257,7 +257,7 @@ mark { color: inherit; border-radius: 4px; padding: 0 2px; font-weight: 600; }
 .msg { display: flex; align-items: center; gap: 6px; font-size: 13px; margin-bottom: 3px; } .msg.warn { color: var(--warn); }
 .gap-r { margin-right: 5px; } .wrap-any { overflow-wrap: anywhere; } td.center { text-align: center; padding: 22px; }
 tr.row-error { background: var(--bad-soft); } tr.row-error:hover { background: var(--bad-soft); }
-.row-actions { display: flex; gap: 6px; flex-wrap: nowrap; } .row-actions .btn { white-space: nowrap; }
+.row-actions { display: flex; flex-direction: column; gap: 6px; min-width: 112px; } .row-actions .btn { white-space: nowrap; width: 100%; }
 .tabs button .icon { margin-right: -2px; }
 .seg .count { margin-left: 4px; }
 

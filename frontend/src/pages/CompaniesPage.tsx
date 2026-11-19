@@ -55,7 +55,7 @@ export default function CompaniesPage() {
                     <td className="wrap">{c.hq_address}</td>
                     <td className="wrap">{c.reps || <span className="muted">—</span>}</td>
                     <td><span className="count-pill">{c.count}</span></td>
-                    <td className="nowrap">{dmyhm(c.last_at)}</td>
+                    <td>{dmyhm(c.last_at)}</td>
                     <td>
                       <div className="row-actions">
                         <Link className="btn sm primary" to={`/search?tax_code=${encodeURIComponent(c.tax_code)}`} title={`Xem ${c.count} bố cáo của ${c.tax_code}`}>

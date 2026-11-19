@@ -14,9 +14,8 @@ from app.db import Session, now
 from app.models import Announcement, CrawlJob
 from app.web import create_app
 
-from conftest import needs_pdf
+from conftest import TAX, needs_pdf, strip_accents
 
-TAX = "0101243150"
 H = {"X-Requested-With": "XMLHttpRequest"}      # header bắt buộc cho thao tác ghi (chống CSRF)
 
 
@@ -27,7 +26,7 @@ def client(env, worker):
 
 @pytest.fixture()
 def loaded(env, worker):
-    """Database đã có 4 bố cáo MISA (2024-2026) và đã ghi nhận khoảng crawl."""
+    """Database đã có 4 bố cáo của công ty mẫu (2024-2026) và đã ghi nhận khoảng crawl."""
     with Session() as s:
         services.submit_request(s, [TAX], ["AMEND"], date(2024, 1, 1), date(2026, 12, 31), now())
     worker.run_pending()
@@ -107,19 +106,19 @@ def test_preview_does_not_create_jobs(client):
 
 
 @needs_pdf
-def test_search_and_detail(client, loaded):
+def test_search_and_detail(client, loaded, expected):
     def search(**p):
         return client.get("/api/search", query_string=p).get_json()
 
-    d = search(q="MISA")
-    assert d["total"] == 4 and d["pages"] == 1 and d["items"][0]["company_name"] == "CÔNG TY CỔ PHẦN MISA"
+    d = search(q=expected["search_token"])
+    assert d["total"] == expected["counts"]["company"] and d["pages"] == 1 and d["items"][0]["company_name"] == expected["company_name"]
     it = d["items"][0]
     assert it["has_pdf"] and it["ann_type_name"] == "Đăng ký thay đổi" and it["posted_at"].startswith("2026-05-12T17:06")
-    assert {r["full_name"] for r in it["reps"]} >= {"ĐINH THỊ THÚY", "LÊ HỒNG QUANG"}
+    assert {r["full_name"] for r in it["reps"]} >= {expected["rep_a"]["name"], expected["rep_b"]["name"]}
     # tìm theo người đại diện / CCCD / địa chỉ
-    assert search(q="030176006255")["total"] == 3          # bà Thúy không có trong bố cáo 11/2024
-    assert search(q="LỮ THÀNH LONG")["total"] == 4
-    assert search(q="Technosoft")["total"] == 4
+    assert search(q=expected["rep_a"]["id_number"])["total"] == expected["counts"]["rep_a_id"]    # người này không có trong mọi bố cáo
+    assert search(q=expected["rep_c"]["name"])["total"] == expected["counts"]["rep_c_name"]
+    assert search(q=expected["address_token"])["total"] == expected["counts"]["address_token"]
     # lọc ngày đăng và loại
     assert search(date_from="2026-05-01", date_to="2026-05-31")["total"] == 1
     assert search(ann_type="NEW")["total"] == 0 and search(q="khong-ton-tai-xyz")["total"] == 0
@@ -131,9 +130,9 @@ def test_search_and_detail(client, loaded):
     names = {g["name"] for g in a["groups"]}
     assert "Thông tin chung" in names and any("Ngành, nghề" in n for n in names)
     assert any(n.startswith("Người đại diện theo pháp luật") for n in names)
-    rep = next(r for r in a["reps"] if r["full_name"] == "ĐINH THỊ THÚY")
-    assert rep["id_number"] == "030176006255" and rep["gender"] == "Nữ"
-    assert "Technosoft" in a["hq_address"] and a["parse_status"] == "ok"
+    rep = next(r for r in a["reps"] if r["full_name"] == expected["rep_a"]["name"])
+    assert rep["id_number"] == expected["rep_a"]["id_number"] and rep["gender"] == expected["rep_a"]["gender"]
+    assert expected["address_token"] in a["hq_address"] and a["parse_status"] == "ok"
 
     pdf = client.get(f"/api/files/{ann_id}")
     assert pdf.status_code == 200 and pdf.mimetype == "application/pdf" and pdf.data[:4] == b"%PDF"
@@ -169,41 +168,42 @@ def test_deep_search_looks_in_all_fields(client, loaded):
 
 
 @needs_pdf
-def test_company_people_and_coverage(client, loaded):
-    d = client.get("/api/companies?q=MISA").get_json()
-    assert d["total"] == 1 and d["items"][0]["tax_code"] == TAX and d["items"][0]["count"] == 4
-    assert d["items"][0]["company_name"] == "CÔNG TY CỔ PHẦN MISA" and "LỮ THÀNH LONG" in d["items"][0]["reps"]
+def test_company_people_and_coverage(client, loaded, expected):
+    d = client.get("/api/companies", query_string={"q": expected["search_token"]}).get_json()
+    assert d["total"] == 1 and d["items"][0]["tax_code"] == TAX and d["items"][0]["count"] == expected["counts"]["company"]
+    assert d["items"][0]["company_name"] == expected["company_name"] and expected["rep_c"]["name"] in d["items"][0]["reps"]
     c = client.get(f"/api/companies/{TAX}").get_json()
     assert len(c["announcements"]) == 4 and c["latest"]["tax_code"] == TAX
     cov = c["coverage"][0]
     assert cov["ann_type"] == "AMEND" and cov["date_from"] == "2024-01-01" and cov["result_count"] == 4
     assert cov["effective"]["start"] == "2024-01-01" and cov["effective"]["end"]    # hôm nay chưa tính -> tới hôm qua/hôm nay
-    p = client.get("/api/people", query_string={"name": "LỮ THÀNH LONG"}).get_json()
-    assert p["total"] == 4 and p["items"][0]["id_number"] == "038072007300"
+    p = client.get("/api/people", query_string={"name": expected["rep_c"]["name"]}).get_json()
+    assert p["total"] == expected["counts"]["rep_c_name"] and p["items"][0]["id_number"] == expected["rep_c"]["id_number"]
     assert p["items"][0]["announcement"]["tax_code"] == TAX
-    p = client.get("/api/people?id_number=030176006255").get_json()
-    assert p["items"][0]["full_name"] == "ĐINH THỊ THÚY"
+    p = client.get("/api/people", query_string={"id_number": expected["rep_a"]["id_number"]}).get_json()
+    assert p["items"][0]["full_name"] == expected["rep_a"]["name"]
 
 
 @needs_pdf
-def test_vietnamese_search_ignores_case_and_accents_on_mysql(client, loaded):
+def test_vietnamese_search_ignores_case_and_accents_on_mysql(client, loaded, expected):
     """Chỉ chạy trên MySQL (utf8mb4_unicode_ci). SQLite chỉ không phân biệt hoa/thường với chữ ASCII."""
     from app import db
     if db.engine().dialect.name != "mysql":
         pytest.skip("chỉ MySQL")
-    for q in ("lữ thành long", "lu thanh long"):
-        assert client.get("/api/search", query_string={"q": q}).get_json()["total"] == 4
-    assert client.get("/api/people?name=lữ thành long").get_json()["total"] == 4
+    name = expected["rep_c"]["name"]
+    for q in (name.lower(), strip_accents(name).lower()):           # chữ thường có dấu / không dấu
+        assert client.get("/api/search", query_string={"q": q}).get_json()["total"] == expected["counts"]["rep_c_name"]
+    assert client.get("/api/people", query_string={"name": name.lower()}).get_json()["total"] == expected["counts"]["rep_c_name"]
 
 
 @needs_pdf
-def test_export_excel(client, loaded):
-    r = client.get("/api/search/export.xlsx?q=MISA")
+def test_export_excel(client, loaded, expected):
+    r = client.get("/api/search/export.xlsx", query_string={"q": expected["search_token"]})
     assert r.status_code == 200 and r.mimetype.endswith("spreadsheetml.sheet")
     wb = load_workbook(io.BytesIO(r.data))
     assert wb.sheetnames == ["Bố cáo", "Người đại diện"]
     assert wb["Bố cáo"].max_row == 5 and wb["Người đại diện"].max_row > 5
-    assert wb["Bố cáo"]["E2"].value == "CÔNG TY CỔ PHẦN MISA"
+    assert wb["Bố cáo"]["E2"].value == expected["company_name"]
 
 
 def test_jobs_endpoints_and_actions(client, worker):
@@ -324,7 +324,7 @@ def test_serves_built_frontend_with_spa_fallback(env, tmp_path, monkeypatch):
     monkeypatch.setattr(Config, "FRONTEND_DIST", dist)
     c = create_app(worker=None, config=Config).test_client()
     assert b"SPA" in c.get("/").data
-    assert b"SPA" in c.get("/companies/0101243150").data                  # đường dẫn của React Router
+    assert b"SPA" in c.get(f"/companies/{TAX}").data                  # đường dẫn của React Router
     assert c.get("/assets/app.js").data == b"console.log(1)"
     (tmp_path / "secret.txt").write_text("BÍ MẬT", encoding="utf-8")
     for evil in ("/..%2Fsecret.txt", "/%2e%2e/secret.txt", "/assets/..%2F..%2Fsecret.txt"):

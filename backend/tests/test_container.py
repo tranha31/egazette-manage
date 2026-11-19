@@ -8,7 +8,7 @@ from app.db import Session
 from app.models import CrawlJob
 from app.web import create_app
 
-from conftest import SAMPLE_DIR, MISA_ROWS, needs_pdf
+from conftest import SAMPLE_DIR, SAMPLE_FILES, TAX, needs_pdf
 
 H = {"X-Requested-With": "XMLHttpRequest"}
 
@@ -35,7 +35,7 @@ def test_missing_fonts_give_an_actionable_error(monkeypatch, tmp_path):
 
 
 @needs_pdf
-def test_parse_works_with_fonts_taken_from_pdf_font_dir(monkeypatch, tmp_path):
+def test_parse_works_with_fonts_taken_from_pdf_font_dir(monkeypatch, tmp_path, expected):
     """Giả lập container: chép 4 file font vào thư mục riêng và trỏ PDF_FONT_DIR tới đó."""
     import os
     import shutil
@@ -49,10 +49,10 @@ def test_parse_works_with_fonts_taken_from_pdf_font_dir(monkeypatch, tmp_path):
     monkeypatch.setenv("PDF_FONT_DIR", str(tmp_path))
     pdf_parser._gid_to_char.cache_clear()
     try:
-        r = pdf_parser.parse_pdf(SAMPLE_DIR / MISA_ROWS[0][1])
+        r = pdf_parser.parse_pdf(SAMPLE_DIR / SAMPLE_FILES[0][1])
     finally:
         pdf_parser._gid_to_char.cache_clear()
-    assert r["ok"] and any(x["value"] == "CÔNG TY CỔ PHẦN MISA" for x in r["rows"])
+    assert r["ok"] and any(x["value"] == expected["company_name"] for x in r["rows"])
 
 
 # ------------------------------------------------------------------ trình duyệt dự phòng
@@ -110,7 +110,7 @@ def test_crawler_reports_when_no_browser_works(monkeypatch):
 
 # ------------------------------------------------------------------ reverse proxy
 def test_client_ip_comes_from_forwarded_header_only_when_proxy_is_trusted(env, monkeypatch):
-    body = {"tax_codes": "0101243150", "types": ["AMEND"], "date_from": "2024-01-01", "date_to": "2024-12-31"}
+    body = {"tax_codes": TAX, "types": ["AMEND"], "date_from": "2024-01-01", "date_to": "2024-12-31"}
     fwd = {**H, "X-Forwarded-For": "203.0.113.7"}
 
     monkeypatch.setattr(Config, "TRUST_PROXY", True)

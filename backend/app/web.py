@@ -163,7 +163,7 @@ def create_app(worker=None, config=Config):
         raw = j.get("tax_codes", "")
         tax_codes, bad = services.parse_tax_codes("\n".join(raw) if isinstance(raw, list) else str(raw))
         if bad:
-            errors.append("Mã số thuế không hợp lệ: " + ", ".join(bad) + " (cần 10 hoặc 13 số, ví dụ 0101243150 hoặc 0101243150-001).")
+            errors.append("Mã số thuế không hợp lệ: " + ", ".join(bad) + " (cần 10 hoặc 13 số, ví dụ 0999999991 hoặc 0999999991-001).")
         if not tax_codes and not bad:
             errors.append("Hãy nhập ít nhất một mã số thuế.")
         types = [t for t in (j.get("types") or []) if t == "ALL" or t in TYPES]

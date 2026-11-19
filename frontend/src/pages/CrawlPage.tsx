@@ -167,7 +167,7 @@ export default function CrawlPage() {
 
           <div className="field">
             <label htmlFor="tax">Mã số thuế <small>({codes} mã · mỗi mã một dòng, hoặc cách nhau bằng dấu cách / phẩy)</small></label>
-            <textarea id="tax" rows={5} value={form.tax_codes} placeholder={"0101243150\n0100109106"} onChange={(e) => set("tax_codes", e.target.value)} />
+            <textarea id="tax" rows={5} value={form.tax_codes} placeholder={"0999999991\n0999999992"} onChange={(e) => set("tax_codes", e.target.value)} />
           </div>
 
           <fieldset className="field">

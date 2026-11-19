@@ -104,7 +104,7 @@ class Announcement(Base):
     charter_capital: Mapped[str] = mapped_column(String(80), default="")
     reg_change_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     reg_place: Mapped[str] = mapped_column(String(255), default="")
-    # file PDF trên MinIO: bucket + object key (vd egazette / pdf/0101243150/AMEND/0101243150_AMEND_20260512_170600.pdf)
+    # file PDF trên MinIO: bucket + object key (vd egazette / pdf/0999999991/AMEND/0999999991_AMEND_20260512_170600.pdf)
     pdf_bucket: Mapped[str] = mapped_column(String(100), default="", server_default="")   # rỗng = chưa có file trên MinIO
     pdf_path: Mapped[str] = mapped_column(String(500), default="")   # object key trong bucket
     pdf_size: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))  # byte

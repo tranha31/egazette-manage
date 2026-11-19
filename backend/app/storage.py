@@ -190,7 +190,7 @@ def set_store(store):
 
 
 def location(bucket, key):
-    """Chuỗi hiển thị vị trí file, vd s3://egazette/pdf/0101243150/AMEND/xxx.pdf"""
+    """Chuỗi hiển thị vị trí file, vd s3://egazette/pdf/0999999991/AMEND/xxx.pdf"""
     return f"s3://{bucket}/{key}" if bucket and key else ""
 
 

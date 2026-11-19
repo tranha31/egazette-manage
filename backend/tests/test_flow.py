@@ -9,9 +9,9 @@ from app.db import Session
 from app.models import (CANCELLED, DONE, DONE_WARN, FAILED, PAUSED, QUEUED, SKIPPED, Announcement,
                         AnnouncementField, CrawlCoverage, CrawlJob, LegalRep)
 
-from conftest import needs_pdf
+from conftest import TAX as TAX_CODE, needs_pdf
 
-TAX = ["0101243150"]
+TAX = [TAX_CODE]
 D = date
 
 
@@ -25,7 +25,7 @@ def count(s, model):
 
 
 @needs_pdf
-def test_first_request_crawls_and_saves_everything(env, worker, fake, store):
+def test_first_request_crawls_and_saves_everything(env, worker, fake, store, expected):
     with Session() as s:
         res = submit(s, D(2024, 1, 1), D(2026, 12, 31))
         assert [r.job.status for r in res] == [QUEUED]
@@ -37,16 +37,16 @@ def test_first_request_crawls_and_saves_everything(env, worker, fake, store):
         assert count(s, LegalRep) > 0 and count(s, AnnouncementField) > 100
         a = s.execute(select(Announcement).order_by(Announcement.posted_at.desc())).scalars().first()
         assert a.posted_at.hour == 17 and a.posted_at.minute == 6          # "5:06:00 CH" = 17:06
-        assert a.company_name == "CÔNG TY CỔ PHẦN MISA" and a.doc_tax_code == "0101243150"
-        assert "Technosoft" in a.hq_address and a.parse_status == "ok" and a.pdf_status == "ok"
-        assert {r.full_name for r in a.reps} >= {"ĐINH THỊ THÚY", "LÊ HỒNG QUANG"}
-        assert any(r.id_number == "030176006255" and r.gender == "Nữ" for r in a.reps)
+        assert a.company_name == expected["company_name"] and a.doc_tax_code == expected["tax_code"]
+        assert expected["address_token"] in a.hq_address and a.parse_status == "ok" and a.pdf_status == "ok"
+        assert {r.full_name for r in a.reps} >= {expected["rep_a"]["name"], expected["rep_b"]["name"]}
+        assert any(r.id_number == expected["rep_a"]["id_number"] and r.gender == expected["rep_a"]["gender"] for r in a.reps)
         # PDF nằm trên MinIO; database lưu bucket + object key + kích thước, không còn đường dẫn đĩa
         assert a.pdf_bucket == store.bucket and a.pdf_path == (
-            f"pdf/0101243150/AMEND/0101243150_AMEND_{a.posted_at:%Y%m%d_%H%M%S}.pdf")
+            f"pdf/{TAX_CODE}/AMEND/{TAX_CODE}_AMEND_{a.posted_at:%Y%m%d_%H%M%S}.pdf")
         assert store.read(a.pdf_path)[:4] == b"%PDF" and a.pdf_size == len(store.read(a.pdf_path)) > 1000
         assert len(store.objects) == 4
-    assert fake.calls == [("0101243150", "AMEND", D(2024, 1, 1), _today())]
+    assert fake.calls == [(TAX_CODE, "AMEND", D(2024, 1, 1), _today())]
 
 
 def _today():
@@ -87,7 +87,7 @@ def test_extended_range_only_crawls_the_missing_part(env, worker, fake):
         assert job.status == QUEUED and (job.crawl_from, job.crawl_to) == (D(2025, 1, 1), D(2025, 12, 31))
         assert "bổ sung" in job.message
     worker.run_pending()
-    assert fake.calls[-1] == ("0101243150", "AMEND", D(2025, 1, 1), D(2025, 12, 31))
+    assert fake.calls[-1] == (TAX_CODE, "AMEND", D(2025, 1, 1), D(2025, 12, 31))
     with Session() as s:   # sau đó cả khoảng đã được phủ
         assert submit(s, D(2024, 1, 1), D(2025, 12, 31))[0].skipped
         assert count(s, Announcement) == 2        # 05/11/2024 và 10/05/2025
@@ -194,7 +194,7 @@ def test_cancelled_queued_job_releases_its_range(env):
 
 
 def test_missing_pdf_is_recorded_as_warning(env, worker, fake):
-    fake.rows = {("0101243150", "AMEND"): [("12/05/2026 5:06:00 CH Đăng ký thay đổi", None)]}   # không tải được PDF
+    fake.rows = {(TAX_CODE, "AMEND"): [("12/05/2026 5:06:00 CH Đăng ký thay đổi", None)]}   # không tải được PDF
     with Session() as s:
         submit(s, D(2026, 1, 1), D(2026, 12, 31))
     worker.run_pending()
@@ -209,8 +209,8 @@ def test_all_types_expands_and_validates(env):
     with Session() as s:
         res = services.submit_request(s, TAX, ["ALL"], D(2024, 1, 1), D(2024, 12, 31), _now())
         assert len(res) == 7
-    ok, bad = services.parse_tax_codes("0101243150, 101243150\n12345 0100109106-001;abc")
-    assert ok == ["0101243150", "0100109106-001"] and bad == ["12345", "abc"]
+    ok, bad = services.parse_tax_codes(f"{TAX_CODE}, {TAX_CODE[1:]}\n12345 0100109106-001;abc")
+    assert ok == [TAX_CODE, "0100109106-001"] and bad == ["12345", "abc"]
 
 
 def _now():

@@ -68,7 +68,7 @@ def make_template() -> bytes:
     ws = wb.active
     ws.title = SHEET
     ws.append(HEADERS)
-    ws.append(["0101243150", "AMEND", "01/01/2024", "31/12/2024", "Không"])      # dòng mẫu: MISA
+    ws.append(["0999999991", "AMEND", "01/01/2024", "31/12/2024", "Không"])      # dòng mẫu: một loại, có khoảng ngày
     ws.append(["0100109106", "ALL", None, None, None])                           # mẫu: tất cả loại, không lọc ngày
     for c in ws[1]:
         c.font = Font(bold=True, color="FFFFFF")
@@ -90,7 +90,7 @@ def make_template() -> bytes:
     g = wb.create_sheet("Hướng dẫn")
     rows = [
         ["Cột", "Ý nghĩa"],
-        ["Mã số thuế", "Bắt buộc. 10 hoặc 13 số (vd 0101243150 hoặc 0101243150-001), mỗi dòng một mã."],
+        ["Mã số thuế", "Bắt buộc. 10 hoặc 13 số (vd 0999999991 hoặc 0999999991-001), mỗi dòng một mã."],
         ["Loại công bố", "Bắt buộc. Một hoặc nhiều mã trong bảng bên dưới (ngăn cách bằng dấu phẩy, vd AMEND,NEW), "
                          "hoặc ALL để tra tất cả loại. Mỗi (MST × loại) tốn một lượt giải captcha."],
         ["Từ ngày / Đến ngày", "Tuỳ chọn, dạng dd/MM/yyyy. Bỏ trống cả hai = tất cả từ trước đến nay. "

@@ -1,4 +1,5 @@
 """Fixture dùng chung. Mặc định test chạy trên SQLite tạm; đặt TEST_DATABASE_URL để chạy trên MySQL."""
+import json
 import os
 import shutil
 import sys
@@ -17,19 +18,34 @@ from app.models import Base             # noqa: E402
 from app.services import parse_posted   # noqa: E402
 from app.worker import Worker           # noqa: E402
 
-# PDF thật dùng để test phần tách (công ty MISA, 12 file đã tải bằng tool cũ). Không có thì các test cần PDF sẽ bỏ qua.
+# MST giả dùng làm khoá tra cứu trong test (không phải doanh nghiệp thật)
+TAX = "0999999991"
+
+# PDF thật của một công ty mẫu (đã tải bằng tool cũ) dùng để test phần tách. Các giá trị mong đợi (tên công ty, người đại diện...)
+# nằm trong SAMPLE_DIR/expected.json, ngoài repo, để dữ liệu thật không đi vào mã nguồn.
+# Thiếu thư mục hoặc expected.json thì các test cần PDF tự bỏ qua.
 SAMPLE_DIR = Path(os.getenv("SAMPLE_PDF_DIR",
                             r"D:\TTQLDL\outsource\Tool auto search taxcode\output\pdf"))
 
-# (nhãn "Thời gian" trên trang, tên file PDF mẫu)
-MISA_ROWS = [
-    ("12/05/2026 5:06:00 CH Đăng ký thay đổi", "0101243150_AMEND_1205202650600_p1r1.pdf"),
-    ("23/03/2026 4:11:19 CH Đăng ký thay đổi", "0101243150_AMEND_2303202641119_p1r2.pdf"),
-    ("10/05/2025 5:42:04 CH Đăng ký thay đổi", "0101243150_AMEND_1005202554204_p1r3.pdf"),
-    ("05/11/2024 8:41:35 SA Đăng ký thay đổi", "0101243150_AMEND_0511202484135_p1r4.pdf"),
-    ("26/05/2022 12:39:48 CH Đăng ký thay đổi", "0101243150_AMEND_26052022123948_p1r5.pdf"),
-]
-needs_pdf = pytest.mark.skipif(not (SAMPLE_DIR / MISA_ROWS[0][1]).exists(), reason="không có PDF mẫu")
+
+def _load_expected():
+    f = SAMPLE_DIR / "expected.json"
+    try:
+        return json.loads(f.read_text(encoding="utf-8")) if f.is_file() else None
+    except (OSError, ValueError):
+        return None
+
+
+EXPECTED = _load_expected()
+SAMPLE_FILES = EXPECTED["files"] if EXPECTED else []      # [(nhãn "Thời gian" trên trang, tên file PDF mẫu)]
+needs_pdf = pytest.mark.skipif(not (EXPECTED and (SAMPLE_DIR / SAMPLE_FILES[0][1]).exists()),
+                               reason="không có PDF mẫu + expected.json (SAMPLE_PDF_DIR)")
+
+
+def strip_accents(s):
+    """'TRẦN THỊ VÍ DỤ' -> 'TRAN THI VI DU' (để thử tìm kiếm không dấu)."""
+    import unicodedata
+    return "".join(c for c in unicodedata.normalize("NFD", s.replace("đ", "d").replace("Đ", "D")) if not unicodedata.combining(c))
 
 
 class FakeCrawler:
@@ -100,14 +116,19 @@ def env(tmp_path, monkeypatch, store):
 
 
 @pytest.fixture()
-def misa_rows():
-    rows = [(label, SAMPLE_DIR / f if (SAMPLE_DIR / f).exists() else None) for label, f in MISA_ROWS]
-    return {("0101243150", "AMEND"): rows}
+def expected():
+    return EXPECTED
 
 
 @pytest.fixture()
-def fake(misa_rows):
-    return FakeCrawler(misa_rows)
+def sample_rows():
+    rows = [(label, SAMPLE_DIR / f if (SAMPLE_DIR / f).exists() else None) for label, f in SAMPLE_FILES]
+    return {(TAX, "AMEND"): rows}
+
+
+@pytest.fixture()
+def fake(sample_rows):
+    return FakeCrawler(sample_rows)
 
 
 @pytest.fixture()

@@ -31,7 +31,7 @@ export default function SearchPage() {
           Từ khoá
           <span className="input-icon">
             <Icon name="search" size={16} />
-            <input type="search" name="q" defaultValue={sp.get("q") ?? ""} placeholder="vd: MISA, 030176006255, Lữ Thành Long" />
+            <input type="search" name="q" defaultValue={sp.get("q") ?? ""} placeholder="vd: A, 9999999999, Nguyễn Văn A" />
           </span>
         </label>
         <label>MST <input name="tax_code" defaultValue={sp.get("tax_code") ?? ""} className="w-mst" /></label>

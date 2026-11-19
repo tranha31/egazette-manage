@@ -3,7 +3,7 @@ Bóc tách thông tin trong PDF bố cáo (bocaodientu.dkkd.gov.vn) thành key -
 
 Vì sao cần giải mã: PDF do Microsoft Reporting Services tạo, font Times New Roman nhúng dạng
 Identity-H nhưng KHÔNG có bảng ToUnicode, nên chữ trích ra là số thứ tự glyph (rác, ví dụ
-"&Ð1*7<&Ә3+Ҫ10,6$" thay cho "CÔNG TY CỔ PHẦN MISA"). Ta đổi glyph về Unicode bằng chính bảng
+"&Ð1*7<&Ә3+Ҫ10,6$" thay cho tên công ty). Ta đổi glyph về Unicode bằng chính bảng
 glyph của font Times New Roman trong Windows (C:\\Windows\\Fonts\\times*.ttf), nên máy chạy
 cần là Windows (hoặc có sẵn 4 file font này, trỏ tới bằng biến môi trường PDF_FONT_DIR). Không cần OCR.
 Phải là đúng font của Windows: font "tương thích" như Liberation Serif có số thứ tự glyph khác nên giải mã sai.

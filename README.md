@@ -3,6 +3,8 @@
 Tra cứu bố cáo điện tử ([bocaodientu.dkkd.gov.vn](https://bocaodientu.dkkd.gov.vn)): nhập mã số thuế + loại công bố + khoảng ngày → hệ thống crawl, tách nội dung PDF,
 lưu **MySQL** (dữ liệu) và **MinIO** (file PDF), cho tìm kiếm và xem so sánh thay đổi cũ → mới. **Đã có trong database thì không crawl lại.**
 
+**Hướng dẫn sử dụng (có ảnh từng chức năng): [docs/HUONG_DAN_SU_DUNG.md](docs/HUONG_DAN_SU_DUNG.md)**
+
 ```
 backend/             Flask API + worker crawl (Playwright, 2captcha) + tách PDF
 frontend/            React + TypeScript (Vite)
@@ -100,7 +102,7 @@ Khoá một lần crawl là **(MST, loại công bố, khoảng ngày đăng)**.
 ## PDF trên MinIO
 
 Backend không giữ PDF trên đĩa: tải về thư mục tạm → tách nội dung → upload MinIO → ghi database → xoá file tạm. Bảng `announcements` lưu `pdf_bucket`, `pdf_path` (object key,
-vd `pdf/0101243150/AMEND/..._20260512_170600.pdf`) và `pdf_size`. Xem PDF qua `/api/files/{id}`: backend stream từ MinIO nên đăng nhập vẫn có tác dụng.
+vd `pdf/0999999991/AMEND/..._20260512_170600.pdf`) và `pdf_size`. Xem PDF qua `/api/files/{id}`: backend stream từ MinIO nên đăng nhập vẫn có tác dụng.
 
 - **MinIO lỗi:** xem/tìm kiếm vẫn chạy, crawl tạm dừng có thông báo, `/api/files` trả 502; tự phục hồi khi MinIO chạy lại.
 - **Chuyển PDF cũ trên đĩa lên MinIO:** `python -m app.migrate_pdfs` trong `backend` (`--dry-run` để xem trước, `--delete-local` để xoá file cục bộ sau khi đã kiểm tra). Nguồn: `LEGACY_STORAGE_DIR` (mặc định `backend/storage`).
@@ -132,7 +134,7 @@ cd backend ; pytest            # SQLite tạm, MinIO giả trong bộ nhớ, cra
 cd frontend ; npm test ; npm run build
 ```
 Tuỳ chọn: `TEST_DATABASE_URL` (chạy trên MySQL, **phải là database test riêng** vì test xoá và tạo lại bảng); `TEST_MINIO_ENDPOINT`, `TEST_MINIO_ACCESS_KEY`, `TEST_MINIO_SECRET_KEY` (thêm test với MinIO thật, dùng bucket tạm).
-Test cần PDF mẫu đọc từ `SAMPLE_PDF_DIR`; thiếu thì tự bỏ qua.
+Các test đối chiếu nội dung PDF thật cần thư mục `SAMPLE_PDF_DIR` chứa PDF mẫu **và** file `expected.json` (tên công ty, người đại diện, số CCCD... mong đợi, đặt cạnh PDF, **ngoài repo** để dữ liệu thật không đi vào mã nguồn); thiếu một trong hai thì các test đó tự bỏ qua. Cấu trúc file: xem `backend/tests/conftest.py`.
 
 ## Cần biết
 
