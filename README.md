@@ -1,0 +1,1 @@
+# egazette-manage
