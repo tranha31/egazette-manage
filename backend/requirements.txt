@@ -1,0 +1,23 @@
+# Cài:  pip install -r requirements.txt   (đã kiểm tra với Python 3.14, Windows 64-bit)
+
+# --- web + database
+flask==3.1.3
+sqlalchemy==2.1.8
+pymysql==1.2.4          # driver MySQL
+cryptography==50.0.2    # cần để PyMySQL đăng nhập MySQL 8 (caching_sha2_password)
+python-dotenv==1.2.4
+waitress==3.0.2         # web server chạy thật (Windows/Linux)
+tzdata==2026.6          # múi giờ trên Windows
+openpyxl==3.1.5         # xuất Excel / nhập từ file Excel cũ
+minio==7.2.20           # client MinIO / S3: lưu và đọc file PDF
+
+# --- crawl
+playwright==1.65.0      # dùng Chrome/Edge có sẵn, không cần `playwright install`
+2captcha-python==2.1.2  # đúng tên này, KHÔNG cài gói "TwoCaptcha"
+
+# --- tách PDF (pdf_parser.py)
+pymupdf==1.26.7         # ghim bản này: 2.x kéo theo onnxruntime/numpy rất nặng
+fonttools==4.68.0       # đọc font Times New Roman của Windows để giải mã chữ trong PDF
+
+# --- chạy test
+pytest==9.1.1

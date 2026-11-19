@@ -1,0 +1,14 @@
+# backend
+backend/.env
+backend/api_key.txt
+backend/storage/
+backend/venv/
+__pycache__/
+.pytest_cache/
+# frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+# docker compose / MinIO key
+/.env

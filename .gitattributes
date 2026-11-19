@@ -1,0 +1,16 @@
+# Tự nhận biết file văn bản / nhị phân, chuẩn hoá xuống dòng khi commit.
+* text=auto
+
+# Các file chạy TRONG container Linux phải luôn là LF. Trên Windows (core.autocrlf=true) nếu để CRLF thì
+# script bị lỗi "/bin/sh^M: bad interpreter" khi Docker build / chạy.
+*.sh          text eol=lf
+Dockerfile    text eol=lf
+*.conf        text eol=lf
+docker-compose.yml text eol=lf
+.dockerignore text eol=lf
+
+# File nhị phân: không đụng tới
+*.pdf   binary
+*.xlsx  binary
+*.ttf   binary
+*.png   binary

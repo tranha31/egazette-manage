@@ -1,0 +1,14 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+.env.*
+api_key.txt
+# dữ liệu / test không đưa vào image
+storage/
+tests/
+schema.sql
+Dockerfile
+.dockerignore

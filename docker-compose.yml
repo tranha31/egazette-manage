@@ -1,0 +1,136 @@
+# Egazette: web (frontend nginx + backend Flask/Playwright) + MinIO (PDF) + MySQL (tuỳ chọn).
+#
+#   cp .env.example .env            # điền MINIO_ACCESS_KEY / MINIO_SECRET_KEY, DATABASE_URL, APIKEY_2CAPTCHA...
+#   docker compose up -d --build    # build backend + frontend (lần đầu vài phút) và chạy cùng MinIO
+#   -> mở http://127.0.0.1:8080
+#
+# MySQL: mặc định KHÔNG chạy theo (dùng MySQL có sẵn của bạn qua DATABASE_URL). Muốn chạy MySQL đi kèm:
+#   docker compose --profile mysql up -d --build        (DATABASE_URL mặc định đã trỏ vào nó)
+services:
+  # ------------------------------------------------------------------ giao diện
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL:-}
+    image: egazette-frontend:local
+    container_name: egazette-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      # Chỉ máy này truy cập được. Mở cho máy khác: WEB_BIND=0.0.0.0 VÀ đặt APP_USER / APP_PASSWORD (dữ liệu có CCCD).
+      - "${WEB_BIND:-127.0.0.1}:${WEB_PORT:-8080}:80"
+
+  # ------------------------------------------------------------------ backend (API + worker crawl + tách PDF)
+  backend:
+    build: ./backend
+    image: egazette-backend:local
+    container_name: egazette-backend
+    restart: unless-stopped
+    init: true                      # dọn tiến trình con (Xvfb, Chromium) và chuyển tín hiệu dừng
+    shm_size: "1gb"                 # Chromium cần /dev/shm lớn hơn mặc định 64 MB
+    extra_hosts:
+      - "host.docker.internal:host-gateway"     # để tới MySQL chạy trên máy chủ (Linux cần dòng này, Docker Desktop có sẵn)
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-mysql+pymysql://egazette:egazette@mysql:3306/egazette?charset=utf8mb4}
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-}
+      MINIO_BUCKET: ${MINIO_BUCKET:-egazette}
+      MINIO_SECURE: "false"
+      APIKEY_2CAPTCHA: ${APIKEY_2CAPTCHA:-}
+      MIN_BALANCE: ${MIN_BALANCE:-0.01}
+      HEADLESS: ${HEADLESS:-false}                # false = Chromium có giao diện trên màn hình ảo Xvfb (khuyến nghị)
+      APP_USER: ${APP_USER:-}
+      APP_PASSWORD: ${APP_PASSWORD:-}
+      SECRET_KEY: ${SECRET_KEY:-doi-chuoi-nay-trong-file-.env}
+      TODAY_RECHECK_MINUTES: ${TODAY_RECHECK_MINUTES:-60}
+      APP_TZ: ${APP_TZ:-Asia/Ho_Chi_Minh}
+      TRUST_PROXY: "true"                         # đứng sau nginx: lấy IP người dùng từ X-Forwarded-For
+      PDF_FONT_DIR: /fonts
+    volumes:
+      # Bộ tách PDF cần ĐÚNG 4 file font Times New Roman của Windows (font "tương thích" như Liberation có số glyph khác nên giải mã sai).
+      # Mặc định lấy từ Windows (Docker Desktop). Máy khác: đặt PDF_FONT_DIR trong .env trỏ tới thư mục chứa 4 file đó.
+      - type: bind
+        source: ${PDF_FONT_DIR:-C:/Windows/Fonts}/times.ttf
+        target: /fonts/times.ttf
+        read_only: true
+        bind: { create_host_path: false }
+      - type: bind
+        source: ${PDF_FONT_DIR:-C:/Windows/Fonts}/timesbd.ttf
+        target: /fonts/timesbd.ttf
+        read_only: true
+        bind: { create_host_path: false }
+      - type: bind
+        source: ${PDF_FONT_DIR:-C:/Windows/Fonts}/timesi.ttf
+        target: /fonts/timesi.ttf
+        read_only: true
+        bind: { create_host_path: false }
+      - type: bind
+        source: ${PDF_FONT_DIR:-C:/Windows/Fonts}/timesbi.ttf
+        target: /fonts/timesbi.ttf
+        read_only: true
+        bind: { create_host_path: false }
+    depends_on:
+      minio:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+        required: false             # chỉ chờ khi bạn bật profile mysql
+    ports:
+      # Cổng API trực tiếp (gỡ lỗi / công cụ khác); người dùng dùng qua frontend. Chỉ lắng nghe 127.0.0.1.
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
+
+  # ------------------------------------------------------------------ MinIO: lưu file PDF
+  # Image build từ source (xem minio/Dockerfile vì MinIO không còn phát hành image chính thức).
+  # Key lấy từ file .env cạnh file này (MINIO_ACCESS_KEY / MINIO_SECRET_KEY).
+  # Chỉ lắng nghe 127.0.0.1; muốn máy khác truy cập: đặt MINIO_BIND=0.0.0.0 (và nên đặt sau HTTPS).
+  # Console quản trị: http://127.0.0.1:9001 (đăng nhập bằng đúng access key / secret key).
+  minio:
+    build: ./minio
+    image: ${MINIO_IMAGE:-egazette-minio:local}
+    container_name: egazette-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-}
+      TZ: Asia/Ho_Chi_Minh
+    ports:
+      - "${MINIO_BIND:-127.0.0.1}:${MINIO_PORT:-9000}:9000"
+      - "${MINIO_BIND:-127.0.0.1}:${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - egazette_minio_data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  # ------------------------------------------------------------------ MySQL đi kèm (tuỳ chọn: --profile mysql)
+  # Cổng 3307 trên máy chủ để không đụng MySQL khác dùng cổng 3306. Dữ liệu trong volume `egazette_mysql_data`.
+  mysql:
+    profiles: ["mysql"]
+    image: mysql:8.0
+    container_name: egazette-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-egazette-root}
+      MYSQL_DATABASE: egazette
+      MYSQL_USER: egazette
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-egazette}
+      TZ: Asia/Ho_Chi_Minh
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "${MYSQL_PORT:-3307}:3306"
+    volumes:
+      - egazette_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-egazette-root}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  egazette_mysql_data:
+  egazette_minio_data:
